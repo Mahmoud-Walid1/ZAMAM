@@ -31,6 +31,14 @@ export const Login: React.FC = () => {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        
+        if (userData.isDeleted === true) {
+          await auth.signOut();
+          setError('⚠️ تم إيقاف هذا الحساب بواسطة الإدارة. يرجى مراجعة المسؤول.');
+          setIsLoading(false);
+          return;
+        }
+
         let role = userData.role;
 
         // Auto-fix admin role

@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import zamamIcon from '../assets/ZAMAM/1T.png';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, setDoc, addDoc, deleteDoc, onSnapshot, query } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, setDoc, addDoc, deleteDoc, onSnapshot, query, updateDoc } from 'firebase/firestore';
+import { GoogleDriveService } from '../lib/googleDrive';
 
 const roleMap: Record<string, string> = {
   'Admin': 'مدير عام',
@@ -49,35 +50,37 @@ export const AdminDashboard: React.FC = () => {
         // Fetch team members
         try {
           const snapshot = await getDocs(collection(db, 'users'));
-          const members = snapshot.docs.map(d => ({
-            id: d.id,
-            name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
-            email: d.data().email,
-            role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
-            rawRole: d.data().role || 'Creator',
-            tasks: 0,
-            status: 'متصل'
-          }));
+          const members = snapshot.docs
+            .filter(d => d.data().isDeleted !== true)
+            .map(d => ({
+              id: d.id,
+              name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
+              email: d.data().email,
+              role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
+              rawRole: d.data().role || 'Creator',
+              tasks: 0,
+              status: 'متصل'
+            }));
           
-        // Fetch tasks live
-        const tasksQuery = query(collection(db, 'tasks'));
-        const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
-          const allTasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          setTasks(allTasks);
+          // Fetch tasks live
+          const tasksQuery = query(collection(db, 'tasks'));
+          unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+            const allTasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setTasks(allTasks);
 
-          // Update member counts whenever tasks change
-          setTeamMembers(prev => prev.map(m => ({
-            ...m,
-            tasks: allTasks.filter((t: any) => {
-              const currentStage = t.pipeline?.find((p: any) => p.stage === t.currentStage);
-              return currentStage?.assigneeId === m.id;
-            }).length
-          })));
-        });
-        setTeamMembers(members);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
+            // Update member counts whenever tasks change
+            setTeamMembers(prev => prev.map(m => ({
+              ...m,
+              tasks: allTasks.filter((t: any) => {
+                const currentStage = t.pipeline?.find((p: any) => p.stage === t.currentStage);
+                return currentStage?.assigneeId === m.id;
+              }).length
+            })));
+          });
+          setTeamMembers(members);
+        } catch (err) {
+          console.error("Error fetching data:", err);
+        }
     } else {
       navigate('/');
     }
@@ -141,6 +144,18 @@ export const AdminDashboard: React.FC = () => {
     } catch (error: any) {
       console.error("Delete error:", error);
       alert("عذراً، فشل الحذف. تأكد من اتصالك بالإنترنت.");
+    }
+  };
+
+  const deleteTeamMember = async (userId: string, name: string) => {
+    if (!window.confirm(`⚠️ هل أنت متأكد من إيقاف وتعطيل العضو "${name}" نهائياً؟`)) return;
+    try {
+      await updateDoc(doc(db, 'users', userId), { isDeleted: true });
+      setTeamMembers(prev => prev.filter(m => m.id !== userId));
+      setAlertMessage({ title: 'تم إيقاف الحساب', message: `تم تعطيل حساب العضو "${name}" وإزالته من قوائم الفريق النشط بنجاح.` });
+    } catch (error: any) {
+      console.error("Delete user error:", error);
+      alert("عذراً، فشل تعطيل الحساب. تأكد من اتصالك بالإنترنت.");
     }
   };
 
@@ -292,7 +307,7 @@ export const AdminDashboard: React.FC = () => {
                   <td className="p-6">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => setUserToEdit(user)} className="p-2 hover:bg-teal-50 rounded-xl text-zamam-primary transition-colors"><Edit3 className="w-4 h-4" /></button>
-                      <button onClick={() => alert("لأسباب أمنية، يجب حذف العضو من لوحة تحكم Firebase مباشرة.")} className="p-2 hover:bg-red-50 rounded-xl text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => deleteTeamMember(user.id, user.name)} className="p-2 hover:bg-red-50 rounded-xl text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -323,7 +338,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setUserToEdit(user)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-teal-50 rounded-xl text-zamam-primary"><Edit3 className="w-5 h-5" /></button>
-                  <button onClick={() => alert("لأسباب أمنية، يجب حذف العضو من لوحة تحكم Firebase مباشرة.")} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-red-50 rounded-xl text-red-500"><Trash2 className="w-5 h-5" /></button>
+                  <button onClick={() => deleteTeamMember(user.id, user.name)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-red-50 rounded-xl text-red-500"><Trash2 className="w-5 h-5" /></button>
                 </div>
               </div>
             </div>
@@ -561,7 +576,15 @@ export const AdminDashboard: React.FC = () => {
         teamMembers={teamMembers}
         onSubmit={async (data) => {
           try {
-             await addDoc(collection(db, 'tasks'), data);
+             let finalData = { ...data };
+             if (isDriveConnected) {
+               const folderResult = await GoogleDriveService.createFolder(data.title);
+               if (folderResult.success && folderResult.folderUrl) {
+                 finalData.fileLink = folderResult.folderUrl;
+                 finalData.driveFolderId = folderResult.folderId;
+               }
+             }
+             await addDoc(collection(db, 'tasks'), finalData);
              setIsModalOpen(false);
              // Re-fetch tasks
              const tasksSnapshot = await getDocs(collection(db, 'tasks'));
@@ -581,15 +604,17 @@ export const AdminDashboard: React.FC = () => {
           onUserCreated={() => {
             // Re-fetch users
             getDocs(collection(db, 'users')).then(snapshot => {
-              const members = snapshot.docs.map(d => ({
-                id: d.id,
-                name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
-                email: d.data().email,
-                role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
-                rawRole: d.data().role || 'Creator',
-                tasks: 0,
-                status: 'متصل'
-              }));
+              const members = snapshot.docs
+                .filter(d => d.data().isDeleted !== true)
+                .map(d => ({
+                  id: d.id,
+                  name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
+                  email: d.data().email,
+                  role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
+                  rawRole: d.data().role || 'Creator',
+                  tasks: 0,
+                  status: 'متصل'
+                }));
               setTeamMembers(members);
             });
           }} 
@@ -604,15 +629,17 @@ export const AdminDashboard: React.FC = () => {
           onUserEdited={() => {
             // Re-fetch users
             getDocs(collection(db, 'users')).then(snapshot => {
-              const members = snapshot.docs.map(d => ({
-                id: d.id,
-                name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
-                email: d.data().email,
-                role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
-                rawRole: d.data().role || 'Creator',
-                tasks: 0,
-                status: 'متصل'
-              }));
+              const members = snapshot.docs
+                .filter(d => d.data().isDeleted !== true)
+                .map(d => ({
+                  id: d.id,
+                  name: d.data().displayName || d.data().email?.split('@')[0] || 'مستخدم',
+                  email: d.data().email,
+                  role: roleMap[d.data().role] || d.data().role || 'مصمم محتوى',
+                  rawRole: d.data().role || 'Creator',
+                  tasks: 0,
+                  status: 'متصل'
+                }));
               setTeamMembers(members);
             });
           }} 
