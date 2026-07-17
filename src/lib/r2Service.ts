@@ -60,8 +60,8 @@
  * ----------------------------------------------------
  */
 export const R2Service = {
-  // Replace this with your deployed Cloudflare Worker URL
-  uploadUrl: "https://r2-relay.XXXXXXXX.workers.dev",
+  // Deployed Cloudflare Worker URL
+  uploadUrl: "https://zmam-r2-relay.m1234568879.workers.dev",
 
   /**
    * Uploads a file to Cloudflare R2 using the Worker relay endpoint.

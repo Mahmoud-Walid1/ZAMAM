@@ -142,15 +142,7 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({ isOpen, on
                       value={description} onChange={(e) => setDescription(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-zamam-textDark mb-2">رابط مجلد العمل (Google Drive)</label>
-                    <input 
-                      type="url"
-                      className="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-zamam-primary focus:bg-white rounded-2xl transition-all outline-none text-right font-bold text-sm"
-                      placeholder="https://drive.google.com/..."
-                      value={fileLink} onChange={(e) => setFileLink(e.target.value)}
-                    />
-                  </div>
+
                   <div>
                     <label className="block text-sm font-bold text-zamam-textDark mb-2 text-right">الأولوية</label>
                     <div className="flex gap-4 flex-row-reverse">
