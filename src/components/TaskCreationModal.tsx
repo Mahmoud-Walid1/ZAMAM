@@ -15,7 +15,7 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({ isOpen, on
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('Medium');
-  const [fileLink, setFileLink] = useState('');
+
   const [requiresFileUpload, setRequiresFileUpload] = useState(false);
   const [requiresAdminApproval, setRequiresAdminApproval] = useState(false);
   
@@ -86,7 +86,7 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({ isOpen, on
       requiresAdminApproval,
       requiresFileUpload,
       pipeline,
-      fileLink,
+      fileLink: '',
       attachments,
       currentStage: 1,
       status: 'Pending',
