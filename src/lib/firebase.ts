@@ -2,8 +2,6 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-import { getStorage } from "firebase/storage";
-
 export const firebaseConfig = {
   apiKey: "AIzaSyCiCCwXAvtrF-W0jcU8RJ3IH6RnpuJlI3c",
   authDomain: "zmam-agency.firebaseapp.com",
@@ -16,7 +14,6 @@ export const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
 
 // Secondary app for admin tasks
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");

@@ -46,6 +46,15 @@ export const AdminDashboard: React.FC = () => {
           if (data.displayName) setUserName(data.displayName);
           setUserRole(data.role === 'Admin' ? 'المدير العام' : 'نائب المدير');
         }
+        // Fetch settings
+        try {
+          const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
+          if (settingsDoc.exists()) {
+            setIsDriveConnected(!!settingsDoc.data().isDriveConnected);
+          }
+        } catch (err) {
+          console.error("Error fetching general settings:", err);
+        }
         
         // Fetch team members
         try {

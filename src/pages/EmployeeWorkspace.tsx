@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Clock, FolderDown, LogOut, Trash2, Activity, Paperclip, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db, storage } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, query, updateDoc, onSnapshot, arrayUnion } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { R2Service } from '../lib/r2Service';
 
 export const EmployeeWorkspace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
@@ -114,22 +114,11 @@ export const EmployeeWorkspace: React.FC = () => {
     setUploading(taskId);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        // Create a unique path for the file
-        const filePath = `tasks/${taskId}/${Date.now()}_${file.name}`;
-        const fileRef = ref(storage, filePath);
-        
-        // Upload with metadata to help with CORS if needed
-        const metadata = {
-          contentType: file.type,
-          customMetadata: {
-            'uploader': userName,
-            'taskId': taskId
-          }
-        };
-
-        const uploadTask = await uploadBytes(fileRef, file, metadata);
-        const url = await getDownloadURL(uploadTask.ref);
-        return { name: file.name, url, type: file.type, path: filePath };
+        const uploadResult = await R2Service.uploadFile(file, taskId);
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        return { name: file.name, url: uploadResult.url, type: file.type };
       });
 
       const uploadedFiles = await Promise.all(uploadPromises);
@@ -142,13 +131,7 @@ export const EmployeeWorkspace: React.FC = () => {
       alert("تم رفع الملفات بنجاح إلى سحابة ZAMAM ✅");
     } catch (error: any) {
       console.error("Upload error detail:", error);
-      if (error.code === 'storage/unauthorized') {
-        alert("⚠️ خطأ: لا تملك صلاحية الرفع. يرجى التأكد من تسجيل الدخول.");
-      } else if (error.code === 'storage/retry-limit-exceeded') {
-        alert("⚠️ خطأ في الاتصال: فشل الرفع بسبب ضعف الإنترنت.");
-      } else {
-        alert("حدث خطأ أثناء الرفع (CORS). يرجى مراجعة إعدادات Firebase Storage.");
-      }
+      alert("حدث خطأ أثناء الرفع إلى سحابة Cloudflare R2. يرجى التحقق من إعدادات الـ Worker.");
     } finally {
       setUploading(null);
     }

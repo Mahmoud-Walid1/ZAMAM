@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority, PipelineStage, Role } from '../types';
 import { PlusCircle, X, ArrowLeft, CheckCircle } from 'lucide-react';
-import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { R2Service } from '../lib/r2Service';
 
 interface TaskCreationModalProps {
   isOpen: boolean;
@@ -62,18 +61,17 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({ isOpen, on
     setUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        // Use a temporary folder for new tasks or a timestamped one
-        const filePath = `temp_uploads/${Date.now()}_${file.name}`;
-        const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
-        return { name: file.name, url, type: file.type };
+        const uploadResult = await R2Service.uploadFile(file, "temp_uploads");
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        return { name: file.name, url: uploadResult.url, type: file.type };
       });
       const results = await Promise.all(uploadPromises);
       setAttachments([...attachments, ...results]);
     } catch (error) {
       console.error(error);
-      alert("فشل رفع الملفات");
+      alert("حدث خطأ أثناء الرفع إلى سحابة Cloudflare R2. يرجى التحقق من إعدادات الـ Worker.");
     } finally {
       setUploading(false);
     }
